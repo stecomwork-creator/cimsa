@@ -1,0 +1,1 @@
+document.addEventListener("click",e=>{let b=e.target.closest("[data-cancel-order]");if(!b)return;let r=b.closest("[data-order-id]"),s=r&&r.querySelector("[data-order-status]")<if(s){s.textContent="\u0130ptal Edildi";s.dataset.orderStatus="cancelled";s.classList.add("cancelled")}b.disabled=true});
