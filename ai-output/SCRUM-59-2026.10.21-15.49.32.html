@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Raporlar</title>
+<style>
+body{font-family:Arial,sans-serif;margin:24px;background:#f6f8fb;color:#1f2937}
+h1{margin-top:0}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;background:white;padding:16px;border-radius:10px;box-shadow:0 1px 5px #d8dee9}
+label{font-weight:700;font-size:14px}
+input,select,button{width:100%;box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #cbd5e1;border-radius:8px}
+button{background:#334155;color:white;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:18px;background:white}
+th,td{padding:12px;border-bottom:1px solid #e5e7eb;text-align:left}
+th{background:#e2e8f0}
+#empty{padding:18px;background:white;border-radius:8px;text-align:center;color:#b91c1c}
+#count{font-weight:700}
+</style>
+</head>
+<body>
+<h1>Raporlar</h1>
+<div class="filters">
+<label>Rapor Ad&#305;<input id="q" placeholder="Rapor ad&#305; ara"></label>
+<label>Departman<select id="dep"><option value="">T&#252;m&#2523¼/option></select></label>
+<label>Durum<select id="st"><option value="">T&c252;m&#252;</option></select></label>
+<label>Ba&#351;lang&it;c&#305;<init id="start" type="date"></label>
+<label>Biti&#351;<input id="end" type="date"></label>
+<button id="clear">Temizle</button>
+</div>
+<p id="count"></p>
+<table>
+<thead><tr><th>Rapor Ad&#305;</th><th>Departman</th><th>Tarih</th><th>Durum</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+<p id="empty">Kay&#305;t bulunamad&#305;</p>
+<script>
+const data=[
+["Aylik Satis Raporu","Satis","2026-01-05","Onayland\u0131"],["Butce Taslagi","Finans","2026-01-12","Taslak"],["Uretim Kalite Analizi","Uretim","2026-02-03","Reddedildi"],["Insan Kaynaklari Ozeti","IK","2026-02-18","Onayland\u0131"],["Bakim Planlama Raporu","Bakim","2026-03-01","Taslak"],["Satis Hedef Takibi","Satis","2026-03-15","Reddedildi"],["Nakit Akis Raporu","Finans","2026-04-08","Onayland\u0131"],["Vardiya Performansi","Uretim","2026-04-22","Taslak"],["Egitim Katilim Raporu","IK","2026-05-06","Onayland\u0131"],["Ariza Kapanis Analizi","Bakim","2026-05-19","Reddedildi"]];
+const q=document.getElementById("q"),dep=document.getElementById("dep"),st=document.getElementById("st"),start=document.getElementById("start"),end=document.getElementById("end"),rows=document.getElementById("rows"),empty=document.getElementById("empty"),count=document.getElementById("count");
+function fill(sel,items){[...new Set(items)].sort().forEach(x=>sel.add(new Option(x,x)))}
+fill(dep,data.map(r=>r[1]));fill(st,data.map(r=>r[3]));
+function draw(){
+ const t=q.value.trim().toLowerCase();
+ const list=data.filter(r=>(!t||r[0].toLowerCase().includes(t))&&(!dep.value||r[1]===dep.value)&&(!st.value||r[3]===st.value)&&(!start.value||r[2]>=start.value)&&(!end.value||r[2]<=end.value));
+ rows.innerHTML=list.map(r=>"<tr><td>"+s.join("</td><td>")+"</td></tr>").join("");
+ empty.style.display=list.length?"none":"block";
+ count.textContent=list.length+" kayit gosteriliyor";
+}
+[q,dep,st,start,end].forEach(x=>x.addEventListener("input",draw));
+document.getElementById("clear").onclick=()=>{q.value=dep.value=st.value=start.value=end.value="";draw()};
+draw();
+</script>
+</body>
+</html>
