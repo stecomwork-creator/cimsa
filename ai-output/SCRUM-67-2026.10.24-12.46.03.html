@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maliyet Takibi - Stok Listesi</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--line:#dbe3ef;--text:#1f2937;--muted:#64748b;--primary:#2563eb;--secondary:#475569;--danger:#b91c1c;--ok:#047857}
+    *{box-sizing:border-box}
+    body{margin:24px;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+    h1{margin:0 0 6px}.subtitle{margin:0 0 18px;color:var(--muted)}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(15,23,42,.08)}
+    .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end}
+    label{display:block;font-size:13px;font-weight:700;color:#334155}
+    input,select,button{width:100%;margin-top:6px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;background:#fff}
+    button{border:0;background:var(--primary);color:#fff;font-weight:700;cursor:pointer}
+    button.secondary{background:var(--secondary)}button.export{background:var(--ok)}
+    .summary{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin:14px 0;color:var(--muted)}
+    table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    th,td{padding:11px 12px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
+    th{background:#eaf0f8;color:#334155}tbody tr:hover{background:#f8fafc}
+    .message{display:none;margin-top:12px;padding:14px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:10px;font-weight:700;color:var(--danger)}
+    @media(max-width:760px){body{margin:12px}table{display:block;overflow-x:auto}.summary{display:block}}
+  </style>
+</head>
+<body>
+  <h1>Maliyet Takibi - Stok Listesi</h1>
+  <p class="subtitle">Stok kayıtlarını filtreleyin ve ekrandaki listeyi Excel olarak indirin.</p>
+
+  <section class="panel" aria-label="Stok filtreleri">
+    <div class="filters">
+      <label>Stok Ara
+        <input id="search" type="search" placeholder="Kod veya ad ara">
+      </label>
+      <label>Depo
+        <select id="warehouse"><option value="">Tümü</option></select>
+      </label>
+      <label>Durum
+        <select id="status"><option value="">Tümü</option></select>
+      </label>
+      <button id="clearButton" class="secondary" type="button">Temizle</button>
+      <button id="exportButton" class="export" type="button">Excel'e Aktar</button>
+    </div>
+  </section>
+
+  <div class="summary">
+    <strong id="resultInfo">0 kayıt gösteriliyor.</strong>
+    <span>Excel çıktısı ekrandaki filtrelenmiş stok listesini içerir.</span>
+  </div>
+
+  <table id="stockTable" aria-label="Stok listesi">
+    <thead>
+      <tr>
+        <th>Stok Kodu</th>
+        <th>Stok Adı</th>
+        <th>Depo</th>
+        <th>Miktar</th>
+        <th>Birim</th>
+        <th>Birim Maliyet</th>
+        <th>Toplam Maliyet</th>
+        <th>Durum</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div id="message" class="message">Dışa aktarılacak kayıt bulunamadı.</div>
+
+  <script>
+    const stocks = [
+      {code:"STK-1001", name:"Klinker", warehouse:"Adana Ana Depo", qty:1250, unit:"Ton", unitCost:920, status:"Aktif"},
+      {code:"STK-1002", name:"Kireç Taşı", warehouse:"Mersin Hammadde", qty:3480, unit:"Ton", unitCost:310, status:"Aktif"},
+      {code:"STK-1003", name:"Alçı Taşı", warehouse:"Eskişehir Depo", qty:720, unit:"Ton", unitCost:460, status:"Aktif"},
+      {code:"STK-1004", name:"Ambalaj Torbası 50kg", warehouse:"Adana Ana Depo", qty:18500, unit:"Adet", unitCost:8.75, status:"Aktif"},
+      {code:"STK-1005", name:"Kömür", warehouse:"Mersin Hammadde", qty:940, unit:"Ton", unitCost:1750, status:"Kritik"},
+      {code:"STK-1006", name:"Katkı Malzemesi A", warehouse:"Afyon Depo", qty:64, unit:"Ton", unitCost:2850, status:"Kritik"},
+      {code:"STK-1007", name:"Yedek Parça - Rulman", warehouse:"Bakım Depo", qty:36, unit:"Adet", unitCost:1450, status:"Aktif"},
+      {code:"STK-1008", name:"Filtre Torbası", warehouse:"Bakım Depo", qty:0, unit:"Adet", unitCost:210, status:"Pasif"},
+      {code:"STK-1009", name:"Dökme Çimento CEM I", warehouse:"Sevkiyat Silosu", qty:510, unit:"Ton", unitCost:1320, status:"Aktif"},
+      {code:"STK-1010", name:"Dökme Çimento CEM II", warehouse:"Sevkiyat Silosu", qty:780, unit:"Ton", unitCost:1180, status:"Aktif"}
+    ];
+
+    const el = {
+      search: document.getElementById("search"),
+      warehouse: document.getElementById("warehouse"),
+      status: document.getElementById("status"),
+      rows: document.getElementById("rows"),
+      resultInfo: document.getElementById("resultInfo"),
+      message: document.getElementById("message")
+    };
+
+    let filteredStocks = [];
+
+    function escapeHtml(value){
+      return String(value).replace(/[&<>'"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[ch]));
+    }
+
+    function formatMoney(value){
+      return Number(value).toLocaleString("tr-TR", {style:"currency", currency:"TRY", minimumFractionDigits:2});
+    }
+
+    function formatNumber(value){
+      return Number(value).toLocaleString("tr-TR");
+    }
+
+    function todayText(){
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    function fillSelect(select, values){
+      [...new Set(values)].sort((a,b) => a.localeCompare(b, "tr")).forEach(value => select.add(new Option(value, value)));
+    }
+
+    function render(){
+      el.rows.innerHTML = filteredStocks.map(item => {
+        const total = item.qty * item.unitCost;
+        return "<tr>" +
+          "<td>" + escapeHtml(item.code) + "</td>" +
+          "<td>" + escapeHtml(item.name) + "</td>" +
+          "<td>" + escapeHtml(item.warehouse) + "</td>" +
+          "<td>" + escapeHtml(formatNumber(item.qty)) + "</td>" +
+          "<td>" + escapeHtml(item.unit) + "</td>" +
+          "<td>" + escapeHtml(formatMoney(item.unitCost)) + "</td>" +
+          "<td>" + escapeHtml(formatMoney(total)) + "</td>" +
+          "<td>" + escapeHtml(item.status) + "</td>" +
+        "</tr>";
+      }).join("");
+
+      el.resultInfo.textContent = filteredStocks.length + " kayıt gösteriliyor.";
+      el.message.style.display = filteredStocks.length ? "none" : "block";
+    }
+
+    function applyFilters(){
+      const text = el.search.value.trim().toLocaleLowerCase("tr-TR");
+      const warehouse = el.warehouse.value;
+      const status = el.status.value;
+
+      filteredStocks = stocks.filter(item =>
+        (!text || item.code.toLocaleLowerCase("tr-TR").includes(text) || item.name.toLocaleLowerCase("tr-TR").includes(text)) &&
+        (!warehouse || item.warehouse === warehouse) &&
+        (!status || item.status === status)
+      );
+
+      render();
+    }
+
+    function buildExcelHtml(){
+      const headers = ["Stok Kodu", "Stok Adı", "Depo", "Miktar", "Birim", "Birim Maliyet", "Toplam Maliyet", "Durum"];
+      const rows = filteredStocks.map(item => [
+        item.code,
+        item.name,
+        item.warehouse,
+        item.qty,
+        item.unit,
+        item.unitCost,
+        item.qty * item.unitCost,
+        item.status
+      ]);
+
+      return "\ufeff" +
+        "<html><head><meta charset='utf-8'></head><body>" +
+        "<table border='1'>" +
+        "<thead><tr>" + headers.map(h => "<th>" + escapeHtml(h) + "</th>").join("") + "</tr></thead>" +
+        "<tbody>" + rows.map(row => "<tr>" + row.map(cell => "<td>" + escapeHtml(cell) + "</td>").join("") + "</tr>").join("") + "</tbody>" +
+        "</table></body></html>";
+    }
+
+    function exportToExcel(){
+      if(!filteredStocks.length){
+        el.message.style.display = "block";
+        return;
+      }
+
+      const blob = new Blob([buildExcelHtml()], {type:"application/vnd.ms-excel;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "stok-listesi-" + todayText() + ".xls";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    fillSelect(el.warehouse, stocks.map(s => s.warehouse));
+    fillSelect(el.status, stocks.map(s => s.status));
+    applyFilters();
+
+    [el.search, el.warehouse, el.status].forEach(input => input.addEventListener("input", applyFilters));
+    document.getElementById("clearButton").addEventListener("click", () => {
+      el.search.value = "";
+      el.warehouse.value = "";
+      el.status.value = "";
+      applyFilters();
+    });
+    document.getElementById("exportButton").addEventListener("click", exportToExcel);
+  </script>
+</body>
+</html>
