@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sevkiyat Oluşturma</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 24px;
+      font-family: Arial, sans-serif;
+      background: #f6f8fb;
+      color: #1f2937;
+    }
+    .card {
+      max-width: 560px;
+      background: #fff;
+      border: 1px solid #dbe3ef;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .08);
+    }
+    h1 { margin: 0 0 18px; font-size: 24px; }
+    label {
+      display: block;
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #334155;
+    }
+    input, select, button {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fff;
+    }
+    input:focus, select:focus {
+      outline: 2px solid #bfdbfe;
+      border-color: #2563eb;
+    }
+    .invalid {
+      border-color: #dc2626 !important;
+      outline-color: #fecaca !important;
+    }
+    .error {
+      min-height: 18px;
+      margin-top: 5px;
+      color: #dc2626;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .actions { margin-top: 18px; }
+    button {
+      border: 0;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    .success {
+      display: none;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Sevkiyat Oluşturma</h1>
+
+    <form id="shipmentForm" novalidate>
+      <label for="customer">Müşteri</label>
+      <select id="customer" name="customer">
+        <option>Çimsa Ankara Bayi</option>
+        <option>Çimsa İzmir Bayi</option>
+      </select>
+
+      <label for="plant">Tesis</label>
+      <select id="plant" name="plant">
+        <option>Eskişehir</option>
+        <option>Mersin</option>
+      </select>
+
+      <label for="vehiclePlate">Araç Plakası</label>
+      <input id="vehiclePlate" name="vehiclePlate" type="text" placeholder="Örn. 34 ABC 123" autocomplete="off" aria-describedby="vehiclePlateError">
+      <div id="vehiclePlateError" class="error" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit">Kaydet</button>
+      </div>
+
+      <div id="successMessage" class="success">Sevkiyat kaydı başarıyla oluşturuldu.</div>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById("shipmentForm");
+    const plateInput = document.getElementById("vehiclePlate");
+    const plateError = document.getElementById("vehiclePlateError");
+    const successMessage = document.getElementById("successMessage");
+
+    function normalizePlate(value) {
+      return value.trim().toLocaleUpperCase("tr-TR").replace(/\s+/g, " ");
+    }
+
+    function isValidTurkishPlate(value) {
+      const normalized = normalizePlate(value);
+      const match = normalized.match(/^(\d{2})\s([A-Z]{1,3})\s(\d{2,4})$/);
+      if (!match) return false;
+
+      const cityCode = Number(match[1]);
+      return cityCode >= 1 && cityCode <= 81;
+    }
+
+    function setPlateError(message) {
+      plateInput.classList.add("invalid");
+      plateInput.setAttribute("aria-invalid", "true");
+      plateError.textContent = message;
+      successMessage.style.display = "none";
+    }
+
+    function clearPlateError() {
+      plateInput.classList.remove("invalid");
+      plateInput.removeAttribute("aria-invalid");
+      plateError.textContent = "";
+    }
+
+    function validatePlate() {
+      const value = normalizePlate(plateInput.value);
+      plateInput.value = value;
+
+      if (!value) {
+        setPlateError("Araç plakası zorunludur");
+        return false;
+      }
+
+      if (!isValidTurkishPlate(value)) {
+        setPlateError("Geçerli bir plaka giriniz");
+        return false;
+      }
+
+      clearPlateError();
+      return true;
+    }
+
+    plateInput.addEventListener("input", () => {
+      if (plateInput.classList.contains("invalid")) validatePlate();
+    });
+
+    plateInput.addEventListener("blur", validatePlate);
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+
+      if (!validatePlate()) {
+        plateInput.focus();
+        return;
+      }
+
+      successMessage.style.display = "block";
+    });
+  </script>
+</body>
+</html>
