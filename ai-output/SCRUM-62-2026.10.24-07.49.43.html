@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>İrsaliye Listesi</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:24px;background:#f7f8fa;color:#1f2937}
+    h1{margin:0 0 20px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+    .card h2{font-size:18px;margin:0;padding:14px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center}
+    .count{font-size:13px;background:#eef2ff;color:#3730a3;border-radius:999px;padding:3px 9px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 12px;border-bottom:1px solid #eef0f3;text-align:left;font-size:14px}
+    th{background:#f9fafb;color:#4b5563}
+    tr:last-child td{border-bottom:none}
+    .cancelled{background:#fff1f2;color:#7f1d1d}
+    .badge{display:inline-block;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}
+    .badge.active{background:#dcfce7;color:#166534}
+    .badge.cancelled{background:#fee2e2;color:#991b1b}
+    .empty{padding:18px;color:#6b7280;font-style:italic}
+  </style>
+</head>
+<body>
+  <h1>İrsaliye Listesi</h1>
+  <main class="grid" aria-live="polite">
+    <section class="card" aria-labelledby="normal-title">
+      <h2 id="normal-title">Normal İrsaliyeler <span id="normal-count" class="count">0</span></h2>
+      <div id="normal-list"></div>
+    </section>
+    <section class="card" aria-labelledby="cancelled-title">
+      <h2 id="cancelled-title">İptal Edilen İrsaliyeler <span id="cancelled-count" class="count">0</span></h2>
+      <div id="cancelled-list"></div>
+    </section>
+  </main>
+
+  <script>
+    const irsaliyeler = [
+      { no: 'IRS-1001', tarih: '2026-10-20', musteri: 'Çimsa Ankara', durum: 'Aktif' },
+      { no: 'IRS-1002', tarih: '2026-10-21', musteri: 'Çimsa Mersin', durum: 'İptal Edildi' },
+      { no: 'IRS-1003', tarih: '2026-10-22', musteri: 'Çimsa Eskişehir', durum: 'Sevk Edildi' },
+      { no: 'IRS-1004', tarih: '2026-10-23', musteri: 'Çimsa Afyon', durum: 'İptal' }
+    ];
+
+    function isCancelled(status) {
+      const value = String(status || '').trim().toLocaleLowerCase('tr-TR');
+      return value === 'iptal' || value === 'iptal edildi' || value === 'cancelled' || value === 'canceled';
+    }
+
+    function renderTable(rows, emptyText, cancelledTable) {
+      if (!rows.length) return '<div class="empty">' + emptyText + '</div>';
+      const body = rows.map(row => {
+        const cancelled = isCancelled(row.durum);
+        const badgeClass = cancelled ? 'cancelled' : 'active';
+        const statusText = cancelled ? 'İptal Edildi' : (row.durum || 'Aktif');
+        return '<tr class="' + (cancelledTable ? 'cancelled' : '') + '">' +
+          '<td>' + row.no + '</td>' +
+          '<td>' + row.tarih + '</td>' +
+          '<td>' + row.musteri + '</td>' +
+          '<td><span class="badge ' + badgeClass + '">' + statusText + '</span></td>' +
+        '</tr>';
+      }).join('');
+      return '<table><thead><tr><th>No</th><th>Tarih</th><th>Müşteri</th><th>Durum</th></tr></thead><tbody>' + body + '</tbody></table>';
+    }
+
+    function renderDeliveryLists(deliveries) {
+      const normal = deliveries.filter(item => !isCancelled(item.durum));
+      const cancelled = deliveries.filter(item => isCancelled(item.durum));
+
+      document.getElementById('normal-count').textContent = normal.length;
+      document.getElementById('cancelled-count').textContent = cancelled.length;
+      document.getElementById('normal-list').innerHTML = renderTable(normal, 'Normal irsaliye bulunmuyor.', false);
+      document.getElementById('cancelled-list').innerHTML = renderTable(cancelled, 'İptal edilen irsaliye bulunmuyor.', true);
+    }
+
+    renderDeliveryLists(irsaliyeler);
+  </script>
+</body>
+</html>
