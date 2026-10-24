@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Müşteri Listesi - Vergi Numarası</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--line:#dbe3ef;--text:#1f2937;--muted:#64748b;--primary:#2563eb;--danger:#b91c1c}
+    *{box-sizing:border-box}
+    body{margin:24px;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+    h1{margin:0 0 16px}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(15,23,42,.08)}
+    label{display:block;font-size:13px;font-weight:700;color:#334155}
+    input{width:100%;max-width:460px;margin-top:6px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;background:#fff}
+    .summary{margin:14px 0;color:var(--muted)}
+    table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    th,td{padding:11px 12px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
+    th{background:#eaf0f8;color:#334155}
+    th.sortable{cursor:pointer;user-select:none}
+    th.sortable:hover{background:#dbeafe;color:#1d4ed8}
+    tbody tr:hover{background:#f8fafc}
+    .tax-number{font-family:Consolas,Monaco,monospace;font-weight:600;color:#334155}
+    .empty{display:none;margin-top:12px;padding:16px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:10px;color:var(--danger);font-weight:700}
+    .hint{font-size:12px;color:var(--muted);margin-top:8px}
+    @media(max-width:700px){body{margin:12px}table{display:block;overflow-x:auto}}
+  </style>
+</head>
+<body>
+  <h1>Müşteri Listesi</h1>
+
+  <section class="panel">
+    <label>Müşteri ara
+      <input id="search" type="search" placeholder="Ad, telefon, vergi numarası, e-posta veya şehir ara">
+    </label>
+    <div class="hint">Vergi numarasına göre arama yapmak için numaranın tamamını veya bir bölümünü yazabilirsiniz.</div>
+  </section>
+
+  <div class="summary">
+    <strong id="resultInfo">Hazırlanıyor...</strong>
+  </div>
+
+  <table aria-label="Müşteri listesi">
+    <thead>
+      <tr>
+        <th data-sort="no" class="sortable">Müşteri No</th>
+        <th data-sort="name" class="sortable">Müşteri Adı / Unvanı</th>
+        <th>Telefon</th>
+        <th data-sort="taxNumber" class="sortable">Vergi Numarası</th>
+        <th>E-posta</th>
+        <th data-sort="city" class="sortable">Şehir</th>
+        <th>Durum</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div id="empty" class="empty">Kayıt bulunamadı</div>
+
+  <script>
+    const customers = [
+      { no: "M-1001", name: "Akdeniz İnşaat A.Ş.", phone: "0212 555 10 01", taxNumber: "1234567890", email: "satinalma@akdenizinsaat.com", city: "İstanbul", status: "Aktif" },
+      { no: "M-1002", name: "Çimtaş Yapı Market", phone: "0312 555 20 02", taxNumber: "0987654321", email: "info@cimtasyapi.com", city: "Ankara", status: "Aktif" },
+      { no: "M-1003", name: "Ege Beton Ltd. Şti.", phone: "0232 555 30 03", taxNumber: "", email: "muhasebe@egebeton.com", city: "İzmir", status: "Pasif" },
+      { no: "M-1004", name: "Güney Lojistik", phone: "0322 555 40 04", taxNumber: "0012345678", email: "operasyon@guneylojistik.com", city: "Adana", status: "Aktif" },
+      { no: "M-1005", name: "Karadeniz Ticaret", phone: "0462 555 50 05", taxNumber: null, email: "", city: "Trabzon", status: "Aktif" },
+      { no: "M-1006", name: "Marmara Çimento", phone: "0262 555 60 06", taxNumber: "5556667778", email: "finans@marmaracimento.com", city: "Kocaeli", status: "Aktif" }
+    ];
+
+    const searchInput = document.getElementById("search");
+    const rows = document.getElementById("rows");
+    const empty = document.getElementById("empty");
+    const resultInfo = document.getElementById("resultInfo");
+    const headers = document.querySelectorAll("th.sortable");
+
+    let sortField = "name";
+    let sortDirection = "asc";
+
+    function escapeHtml(value){
+      return String(value ?? "").replace(/[&<>'"]/g, ch => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        "'":"&#39;",
+        "\"":"&quot;"
+      }[ch]));
+    }
+
+    function normalize(value){
+      return String(value ?? "").trim();
+    }
+
+    function compareValues(a, b, field){
+      const valueA = normalize(a[field]);
+      const valueB = normalize(b[field]);
+
+      if(field === "taxNumber"){
+        if(!valueA && valueB) return 1;
+        if(valueA && !valueB) return -1;
+      }
+
+      return valueA.localeCompare(valueB, "tr", { numeric: true, sensitivity: "base" });
+    }
+
+    function filteredCustomers(){
+      const term = searchInput.value.trim().toLocaleLowerCase("tr-TR");
+
+      return customers
+        .filter(customer => {
+          const searchable = [
+            customer.no,
+            customer.name,
+            customer.phone,
+            customer.taxNumber,
+            customer.email,
+            customer.city,
+            customer.status
+          ].join(" ").toLocaleLowerCase("tr-TR");
+
+          return !term || searchable.includes(term);
+        })
+        .sort((a, b) => {
+          const result = compareValues(a, b, sortField);
+          return sortDirection === "asc" ? result : -result;
+        });
+    }
+
+    function updateHeaderLabels(){
+      headers.forEach(header => {
+        const title = header.textContent.replace(/\s[▲▼]$/, "");
+        if(header.dataset.sort === sortField){
+          header.textContent = title + (sortDirection === "asc" ? " ▲" : " ▼");
+        }else{
+          header.textContent = title;
+        }
+      });
+    }
+
+    function render(){
+      const data = filteredCustomers();
+
+      rows.innerHTML = data.map(customer => {
+        const taxNumber = normalize(customer.taxNumber);
+        return "<tr>" +
+          "<td>" + escapeHtml(customer.no) + "</td>" +
+          "<td>" + escapeHtml(customer.name) + "</td>" +
+          "<td>" + escapeHtml(customer.phone) + "</td>" +
+          "<td class=\"tax-number\">" + escapeHtml(taxNumber) + "</td>" +
+          "<td>" + escapeHtml(customer.email) + "</td>" +
+          "<td>" + escapeHtml(customer.city) + "</td>" +
+          "<td>" + escapeHtml(customer.status) + "</td>" +
+        "</tr>";
+      }).join("");
+
+      empty.style.display = data.length ? "none" : "block";
+      resultInfo.textContent = data.length + " müşteri listeleniyor.";
+      updateHeaderLabels();
+    }
+
+    headers.forEach(header => {
+      header.addEventListener("click", () => {
+        const field = header.dataset.sort;
+        if(sortField === field){
+          sortDirection = sortDirection === "asc" ? "desc" : "asc";
+        }else{
+          sortField = field;
+          sortDirection = "asc";
+        }
+        render();
+      });
+    });
+
+    searchInput.addEventListener("input", render);
+    render();
+  </script>
+</body>
+</html>
