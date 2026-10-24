@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maliyet Takibi - Sevkiyat Raporu</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--line:#dbe3ef;--text:#1f2937;--muted:#64748b;--primary:#2563eb;--secondary:#475569;--danger:#b91c1c}
+    *{box-sizing:border-box}
+    body{margin:24px;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+    h1{margin:0 0 6px}
+    .subtitle{margin:0 0 18px;color:var(--muted)}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(15,23,42,.08)}
+    .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}
+    label{display:block;font-size:13px;font-weight:700;color:#334155}
+    input,button{width:100%;margin-top:6px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;background:#fff}
+    button{border:0;background:var(--primary);color:#fff;font-weight:700;cursor:pointer}
+    button.secondary{background:var(--secondary)}
+    .summary{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin:14px 0;color:var(--muted)}
+    table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    th,td{padding:11px 12px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
+    th{background:#eaf0f8;color:#334155}
+    tbody tr:hover{background:#f8fafc}
+    .message{display:none;margin-top:12px;padding:14px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:10px;font-weight:700}
+    .message.empty{color:var(--danger)}
+    .message.warn{color:#92400e;background:#fffbeb;border-color:#fde68a}
+    @media(max-width:760px){body{margin:12px}table{display:block;overflow-x:auto}.summary{display:block}}
+  </style>
+</head>
+<body>
+  <h1>Maliyet Takibi - Sevkiyat Raporu</h1>
+  <p class="subtitle">Sevkiyat kayıtlarını başlangıç ve bitiş tarihine göre filtreleyin.</p>
+
+  <section class="panel" aria-label="Tarih filtreleri">
+    <div class="filters">
+      <label>Başlangıç Tarihi
+        <input id="startDate" type="date">
+      </label>
+      <label>Bitiş Tarihi
+        <input id="endDate" type="date">
+      </label>
+      <button id="filterButton" type="button">Filtrele</button>
+      <button id="clearButton" class="secondary" type="button">Temizle</button>
+    </div>
+  </section>
+
+  <div class="summary">
+    <strong id="resultInfo">0 kayıt gösteriliyor.</strong>
+    <span>Tarih aralığı sınırları filtreye dahildir.</span>
+  </div>
+
+  <table aria-label="Sevkiyat raporu">
+    <thead>
+      <tr>
+        <th>Sevkiyat No</th>
+        <th>Müşteri</th>
+        <th>Sevkiyat Tarihi</th>
+        <th>Lokasyon</th>
+        <th>Tutar</th>
+        <th>Durum</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div id="emptyMessage" class="message empty">Kayıt bulunamadı</div>
+  <div id="warningMessage" class="message warn">Başlangıç tarihi bitiş tarihinden büyük olamaz.</div>
+
+  <script>
+    const shipments = [
+      {no:"SVK-1001", customer:"Ankara Çimento", date:"2026-01-04", location:"Ankara", amount:128450, status:"Tamamlandı"},
+      {no:"SVK-1002", customer:"Marmara Yapı", date:"2026-01-12", location:"İstanbul", amount:84200, status:"Tamamlandı"},
+      {no:"SVK-1003", customer:"Ege Beton", date:"2026-02-03", location:"İzmir", amount:97350, status:"Planlandı"},
+      {no:"SVK-1004", customer:"Akdeniz İnşaat", date:"2026-02-18", location:"Antalya", amount:156900, status:"Tamamlandı"},
+      {no:"SVK-1005", customer:"Karadeniz Lojistik", date:"2026-03-02", location:"Samsun", amount:64500, status:"İptal"},
+      {no:"SVK-1006", customer:"Güney Proje", date:"2026-03-21", location:"Adana", amount:112750, status:"Tamamlandı"},
+      {no:"SVK-1007", customer:"Trakya Hazır Beton", date:"2026-04-05", location:"Tekirdağ", amount:73500, status:"Planlandı"},
+      {no:"SVK-1008", customer:"İç Anadolu Yapı", date:"2026-04-27", location:"Konya", amount:90800, status:"Tamamlandı"},
+      {no:"SVK-1009", customer:"Doğu Grup", date:"2026-05-11", location:"Erzurum", amount:101250, status:"Planlandı"},
+      {no:"SVK-1010", customer:"Batı Prefabrik", date:"2026-05-29", location:"Balıkesir", amount:133600, status:"Tamamlandı"},
+      {no:"SVK-1011", customer:"Kuzey Yapı", date:"2026-06-09", location:"Trabzon", amount:59800, status:"Tamamlandı"},
+      {no:"SVK-1012", customer:"Merkez İnşaat", date:"2026-06-24", location:"Eskişehir", amount:147300, status:"Planlandı"}
+    ];
+
+    const startDate = document.getElementById("startDate");
+    const endDate = document.getElementById("endDate");
+    const rows = document.getElementById("rows");
+    const resultInfo = document.getElementById("resultInfo");
+    const emptyMessage = document.getElementById("emptyMessage");
+    const warningMessage = document.getElementById("warningMessage");
+
+    function formatMoney(value){
+      return value.toLocaleString("tr-TR", {style:"currency", currency:"TRY", maximumFractionDigits:0});
+    }
+
+    function escapeHtml(value){
+      return String(value).replace(/[&<>'"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[ch]));
+    }
+
+    function render(list){
+      rows.innerHTML = list.map(item =>
+        "<tr>" +
+          "<td>" + escapeHtml(item.no) + "</td>" +
+          "<td>" + escapeHtml(item.customer) + "</td>" +
+          "<td>" + escapeHtml(item.date) + "</td>" +
+          "<td>" + escapeHtml(item.location) + "</td>" +
+          "<td>" + escapeHtml(formatMoney(item.amount)) + "</td>" +
+          "<td>" + escapeHtml(item.status) + "</td>" +
+        "</tr>"
+      ).join("");
+
+      resultInfo.textContent = list.length + " kayıt gösteriliyor.";
+      emptyMessage.style.display = list.length ? "none" : "block";
+    }
+
+    function applyDateFilter(){
+      const start = startDate.value;
+      const end = endDate.value;
+
+      warningMessage.style.display = "none";
+
+      if(start && end && start > end){
+        rows.innerHTML = "";
+        resultInfo.textContent = "0 kayıt gösteriliyor.";
+        emptyMessage.style.display = "none";
+        warningMessage.style.display = "block";
+        return;
+      }
+
+      const filtered = shipments.filter(item =>
+        (!start || item.date >= start) &&
+        (!end || item.date <= end)
+      );
+
+      render(filtered);
+    }
+
+    document.getElementById("filterButton").addEventListener("click", applyDateFilter);
+    startDate.addEventListener("input", applyDateFilter);
+    endDate.addEventListener("input", applyDateFilter);
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      startDate.value = "";
+      endDate.value = "";
+      warningMessage.style.display = "none";
+      render(shipments);
+    });
+
+    render(shipments);
+  </script>
+</body>
+</html>
