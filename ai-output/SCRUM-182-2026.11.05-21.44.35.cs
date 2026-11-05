@@ -19,10 +19,13 @@ namespace Placeholder.SupplierApplications
 
         public static string? NormalizeCompanyTitleOrTaxOffice(string? value)
         {
-            if (string.IsNullOrWhiteSpace(value))
-                return value;
+            if (value is null)
+                return null;
 
             var trimmed = value.Trim();
+            if (trimmed.Length == 0)
+                return string.Empty;
+
             var builder = new StringBuilder(trimmed.Length);
 
             foreach (var character in trimmed)
