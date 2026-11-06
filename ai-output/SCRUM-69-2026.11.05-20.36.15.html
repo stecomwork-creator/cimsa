@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sipariş Listesi - Ödeme Şekli</title>
+  <title>Sipariş Listesi - Ödeme Şekli (incelendi)</title>
   <style>
     :root{--bg:#f6f8fb;--card:#fff;--line:#dbe3ef;--text:#1f2937;--muted:#64748b;--primary:#2563eb;--danger:#b91c1c}
     *{box-sizing:border-box}
@@ -53,12 +53,12 @@
   <table aria-label="Sipariş listesi">
     <thead>
       <tr>
-        <th>Sipariş No</th>
-        <th>Müşteri</th>
-        <th>Tarih</th>
-        <th>Tutar</th>
-        <th class="sortable" id="paymentSort" tabindex="0" role="button" aria-label="Ödeme şekline göre sırala">Ödeme Şekli ↕</th>
-        <th>Durum</th>
+        <th scope="col">Sipariş No</th>
+        <th scope="col">Müşteri</th>
+        <th scope="col">Tarih</th>
+        <th scope="col">Tutar</th>
+        <th scope="col" class="sortable" id="paymentSort" tabindex="0" aria-label="Ödeme şekline göre sırala" aria-sort="ascending">Ödeme Şekli ↑</th>
+        <th scope="col">Durum</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -110,7 +110,7 @@
       });
       values
         .filter(value => !preferred.includes(value))
-        .sort((a,b) => a.localeCompare(b, "tr"))
+        .sort((a,b) => a.localeCompare(b, "tr-TR"))
         .forEach(value => el.paymentFilter.add(new Option(value, value)));
     }
 
@@ -125,7 +125,7 @@
           return (!search || haystack.includes(search)) && (!payment || paymentText === payment);
         })
         .sort((a,b) => {
-          const result = normalizePayment(a.paymentMethod).localeCompare(normalizePayment(b.paymentMethod), "tr");
+          const result = normalizePayment(a.paymentMethod).localeCompare(normalizePayment(b.paymentMethod), "tr-TR");
           return sortDirection === "asc" ? result : -result;
         });
     }
